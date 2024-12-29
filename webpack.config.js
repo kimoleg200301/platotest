@@ -6,7 +6,8 @@ module.exports = {
   entry: './src/index.tsx',
   output: {
     filename: 'bundle.js',
-    path: path.resolve(__dirname, 'dist')
+    path: path.resolve(__dirname, 'dist'),
+    publicPath: '/'
   },
   resolve: {
     extensions: ['.ts', '.tsx', '.js']
@@ -42,6 +43,7 @@ module.exports = {
   ],
   devServer: {
     static: path.resolve(__dirname, 'dist'),
+    historyApiFallback: true,
     port: 3000,
     hot: true
   },
