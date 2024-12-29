@@ -1,9 +1,17 @@
 import React from "react";
+import { BrowserRouter as Router, Route, Routes } from 'react-router';
 import './input.css';
+import Main from './pages/Main';
 
 const App: React.FC = () => {
   return(
-    <h1 className="text-[200px] font-bold underline">Hello World!!!</h1>
+    <>
+      <Router>
+        <Routes>
+          <Route path={'/'} element={<Main />} />
+        </Routes>
+      </Router>
+    </>
   );
 }
 
