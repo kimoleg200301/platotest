@@ -2,19 +2,18 @@ import React, { useState } from "react";
 import mammoth from "mammoth";
 import Header from '../compnents/Header';
 import ResultModal from "../modal/ResultModal";
-import JSZip = require("jszip");
-import { BaseObject } from "styled-components/dist/types";
 
 interface Questions {
   id: number;
   question: string;
   variants: string[];
 }
-interface ImageFile {
-  type: "image";
-  content: string;
-  index: number;
-  data: string;
+interface MammothImage {
+    contentType: string; // MIME-тип изображения, например, "image/png"
+    readAsArrayBuffer(): Promise<ArrayBuffer>; // Чтение изображения как ArrayBuffer
+    readAsBuffer(): Promise<Buffer>; // Чтение изображения как Buffer (Node.js)
+    readAsBase64String(): Promise<string>; // Чтение изображения как Base64-строка
+    read(encoding?: string): Promise<string | Buffer>; // Устаревший метод
 }
 
 const Main: React.FC = () => {
@@ -24,10 +23,8 @@ const Main: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loadingResult, setLoadingResult] = useState<string>('');
   const [typeResult, setTypeResult] = useState<string>('');
-  const [images, setImages] = useState<ImageFile[]>([]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setImages([]);
     setFileName('');
     setFileContent('');
     const file = event.target.files?.[0];
@@ -38,35 +35,23 @@ const Main: React.FC = () => {
         const reader = new FileReader();
         reader.onload = async (e) => {
           const arrayBuffer = reader.result as ArrayBuffer;
-          /* ----- Вытаскиваем изображения с помощью JSZip ----- */
-          const zip = await JSZip.loadAsync(arrayBuffer);
-          const mediaFiles = zip.folder('word/media');
-          const images = [];
-          if (mediaFiles) {
-            const filePromises: Promise<ImageFile>[] = [];
-            let imageIndex = 0;
-
-            mediaFiles.forEach((relativePath, file) => {
-              filePromises.push(
-                file.async("base64").then((base64Data) => ({
-                  type: "image",
-                  content: relativePath,
-                  index: imageIndex++,
-                  data: `data:image/png;base64,${base64Data}`,
-                }))
-              );
-            });
-
-            const resolvedImages = await Promise.all(filePromises);
-            images.push(...resolvedImages);
-            setImages(images);
+          /* ----- Логика формирования объекта со всеми вопросами с ответами (c изображением) через метод mammoth.convertToHtml() ----- */
+          const imageHandler = async (image: MammothImage) => {
+            return image.readAsBase64String().then((imageBuffer: string) => {
+              return {
+                src: `data:${image.contentType};base64,${imageBuffer}`,
+                alt: "Embedded image"
+              }
+            })
           }
-          /* -------------------- */
-          /* ----- Логика формирования объекта со всеми вопросами с ответами (только текст) ----- */
-          const result = await mammoth.extractRawText({ arrayBuffer });
+          const result = await mammoth.convertToHtml({ arrayBuffer }, { convertImage: mammoth.images.imgElement(imageHandler) });
           const text = result.value;
-          if (text.includes('<question>') || text.includes('<variant>')) {
-            const splitQuestions = text.split('<question>');
+          const textWithImages = text.replace(/<p>\s*<\/p>/g, "").replace(/<(?!img\b)[^>]*>/g, "").replace(/&(gt|lt);/g, (match, p1) => {
+            return p1 === "gt" ? ">" : "<";
+          });
+          console.log(textWithImages); // &lt;question&gt; | &lt;variant&gt;
+          if (textWithImages.includes('<question>') || textWithImages.includes('<variant>')) {
+            const splitQuestions = textWithImages.split('<question>');
             const questionsResult = splitQuestions.slice(1).map((row, index) => {
               const splitVariants = row.split('<variant>');
               return {
@@ -76,17 +61,13 @@ const Main: React.FC = () => {
               };
             });
             console.log(questionsResult);
-            console.log(images);
             setQuestions(questionsResult);
           }
           else {
             openModal(`Загруженный файл не является тестом`, 'error');
           }
-          /* -------------------- */   
-          /* ----- Логика формирования объекта со всеми вопросами с ответами (c изображением) через метод mammoth.convertToHtml() ----- */
-
+          setFileContent(textWithImages);
           /* -------------------- */ 
-          setFileContent(text);
         }
         reader.readAsArrayBuffer(file);
       }
@@ -123,21 +104,30 @@ const Main: React.FC = () => {
           <p className="mt-4 text-gray-700">
             Выбранный файл: <span className="font-bold">{fileName}</span>
           </p>
-          <pre className="w-full mt-4 text-gray-700 bg-gray-100 p-4 rounded-lg overflow-auto max-h-[500px]">
-            {questions.map((q) => (
-              <div key={q.id}>
-              <strong>{q.question}</strong>
-              <ul>
-                {q.variants.map((variant, index) => (
-                  <li key={index}>{variant}</li>
-                ))}
-              </ul>
-            </div>
-            ))}
-          </pre>
-          {/* {images.map((q) => {
-            <img src={q.data} />
-          })} */}
+          {questions.map((q) => (
+            <div key={q.id} className="w-full mt-4 text-gray-700 bg-gray-100 p-4 rounded-lg overflow-auto max-h-[500px]">
+            <strong>
+              {q.question.includes("<img")
+              ? (
+                <span dangerouslySetInnerHTML={{ __html: q.question }}></span>
+              ) : (
+                q.question
+              )}
+            </strong>
+            <ul>
+              {q.variants.map((variant, index) => (
+                <li key={index}>
+                  {variant.includes("<img") 
+                  ? (
+                    <span dangerouslySetInnerHTML={{ __html: variant }}></span>  
+                  ) : (
+                    variant
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+          ))}
           </>
         )}
     </div>
