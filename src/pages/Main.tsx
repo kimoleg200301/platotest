@@ -190,8 +190,8 @@ const Main: React.FC = () => {
                 <label htmlFor="50">50 вопросов</label>
               </div>
               <div className="m-[4px]">
-                <input type="radio" id="50" value={questions.length} onChange={handleRadioChange} checked={selectCount === questions.length} className="m-[5px]" />
-                <label htmlFor="50">Все вопросы ({questions.length})</label>
+                <input type="radio" id={questions.length+""} value={questions.length} onChange={handleRadioChange} checked={selectCount === questions.length} className="m-[5px]" />
+                <label htmlFor={questions.length+""}>Все вопросы ({questions.length})</label>
               </div>
             </div>
             <div className="m-[10px]">
@@ -199,7 +199,9 @@ const Main: React.FC = () => {
             </div>
           </>
         ) : (fileContent && testReady === true) ? (
-          <TestingProcess readyQuestions={readyQuestions} />
+          <div className="w-full mt-4 text-gray-700 bg-gray-100 p-4 rounded-lg overflow-auto max-h-[500px]">
+            <TestingProcess readyQuestions={readyQuestions} />
+          </div>
         ) : (
           <span>Вернитесь на главную страницу для загрузки теста</span>
         )

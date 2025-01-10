@@ -1,4 +1,4 @@
-import React, { use, useState } from "react";
+import React, { useState } from "react";
 
 interface Questions {
   id: number;
@@ -33,13 +33,25 @@ const TestingProcess: React.FC<MassQuestions> = ({ readyQuestions }) => {
       <div>
         {readyQuestions.map((question, questionIndex) => questionIndex === selectedQuestion && (
           <div key={questionIndex}>
-            <h1 className="text-[23px] font-bold">{question.question}</h1>
+            <h1 className="text-[23px] font-bold">
+              {question.question.includes("<img") ? (
+                <span dangerouslySetInnerHTML={{ __html: question.question }}></span>
+              ) : (
+                question.question
+              )}
+            </h1>
             {question.variants.map((variant, variantIndex) => (
               <>
-              <div key={variantIndex} className="m-[4px]">
-                <input type="radio" id={variantIndex+""} value={variantIndex} onChange={handleRadioChange} checked={selectedVariant === variantIndex} className="m-[5px]" />
-                <label htmlFor={variantIndex+""}>{variant}</label>
-              </div>
+                <div key={variantIndex} className="m-[4px]">
+                  <input type="radio" id={variantIndex+""} value={variantIndex} onChange={handleRadioChange} checked={selectedVariant === variantIndex} className="m-[5px]" />
+                  <label htmlFor={variantIndex+""}>
+                    {variant.includes("<img") ? (
+                      <span dangerouslySetInnerHTML={{ __html: variant }}></span>
+                    ) : (
+                      variant
+                    )}
+                  </label>
+                </div>
               </>
             ))}
           </div>
