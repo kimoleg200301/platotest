@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import mammoth from "mammoth";
 import Header from '../compnents/Header';
 import ResultModal from "../modal/ResultModal";
@@ -26,11 +26,17 @@ const Main: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loadingResult, setLoadingResult] = useState<string>('');
   const [typeResult, setTypeResult] = useState<string>('');
-  const [selectCount, setSelectCount] = useState<number>(0);
+  const [selectCount, setSelectCount] = useState<number>(20);
+  const [entryCount, setEntryCount] = useState(false);
+  const inputCountRef = useRef<HTMLInputElement | null>(null);
   const [testReady, setTestReady] = useState(false);
 
   const handleRadioChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setEntryCount(false);
     setSelectCount(parseInt(event.target.value));
+  }
+  const handleEntryCount = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setEntryCount(true);
   }
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -73,7 +79,7 @@ const Main: React.FC = () => {
             setQuestions(questionsResult);
           }
           else {
-            openModal(`Загруженный файл не является тестом, либо данный тип теста не поддерживается системой`, 'error');
+            return openModal(`Загруженный файл не является тестом, либо данный тип теста не поддерживается системой`, 'error');
           }
           setFileContent(textWithImages);
           /* -------------------- */ 
@@ -81,13 +87,28 @@ const Main: React.FC = () => {
         reader.readAsArrayBuffer(file);
       }
       else {
-        openModal('Загрузите файл типа .docx', 'error');
-        setFileContent('');
+        return openModal('Загрузите файл типа .docx', 'error');
       }
     }
   };
   /* ----- Функция подготовки вопросов с вариантами ответов ----- */
   const startTest = () => {
+    let _selectCount = selectCount;
+    /* ----- Проверка на корректный диапазон введенного кол-во ----- */
+    if (entryCount) {
+      if (inputCountRef.current) {
+        if (parseInt(inputCountRef.current.value) > questions.length) {
+          return openModal('Введенное кол-во превышает общее кол-во вопросов в тесте', 'error');
+        }
+        else {
+          _selectCount = parseInt(inputCountRef.current.value);
+        }
+      }
+      else {
+        return openModal('Ошибка при определении элемента в методе startTest', 'error');
+      }
+    }
+    /* -------------------- */ 
     if (questions) {
       let selectedQuestion = [];
       /* ----- Функция перемешивания элементов массива ----- */
@@ -99,7 +120,7 @@ const Main: React.FC = () => {
         return array;
       }
       /* -------------------- */
-      for (let i = 0; i < selectCount; i++) {
+      for (let i = 0; i < _selectCount; i++) {
         selectedQuestion.push(questions[Math.floor(Math.random() * (questions.length + 1))])
       }
       const createReadyQuestions = selectedQuestion.map((el) => ({...el, variants: shuffleArray(el.variants)}));
@@ -108,11 +129,10 @@ const Main: React.FC = () => {
       setTestReady(true);
     }
     else {
-      return <span>Ошибка при формировании вопросов, либо данный тип теста не поддерживается системой</span>
+      return openModal('Ошибка при формировании вопросов, либо данный тип теста не поддерживается системой', 'error');
     }
   }
   /* -------------------- */
-
   /* ----- Логика отображения модального окна ----- */
   const openModal = (mess: | string, type: | string) => {
     setTypeResult(type);
@@ -123,83 +143,67 @@ const Main: React.FC = () => {
     }, 5000);
   }
   /* -------------------- */
+  const uploadFile = () => {
+    return (
+      <input id="file-input" type="file" accept=".docx" className="hidden" onChange={handleFileChange} />
+    )
+  }
   return(
     <>
       <Header />
       <div className="flex flex-col mt-14 items-center justify-center p-4">
       {(!fileContent && testReady === false) ? (
         <>
+        <div className="h-50 pr-2 bg-black bg-opacity-5 transition-colors rounded-xl overflow-auto max-h-[500px]">
           <h1 className="m-[15px] text-[25px] font-bold">Загрузить .docx</h1>
           <label
             htmlFor="file-input"
             className="cursor-pointer px-6 py-3 text-white bg-blue-500 rounded-lg hover:bg-blue-600 focus:ring focus:ring-blue-300">
               Выбрать файл
           </label>
-          <input id="file-input" type="file" accept=".docx" className="hidden" onChange={handleFileChange}
-          />
-          {/* {fileContent && (
-            <>
-            <p className="mt-4 text-gray-700">
-              Выбранный файл: <span className="font-bold">{fileName}</span>
-            </p>
-            {questions.map((q) => (
-              <div key={q.id} className="w-full mt-4 text-gray-700 bg-gray-100 p-4 rounded-lg overflow-auto max-h-[500px]">
-              <strong>
-                {q.question.includes("<img")
-                ? (
-                  <span dangerouslySetInnerHTML={{ __html: q.question }}></span>
-                ) : (
-                  q.question
-                )}
-              </strong>
-              <ul>
-                {q.variants.map((variant, index) => (
-                  <li key={index}>
-                    {variant.includes("<img") 
-                    ? (
-                      <span dangerouslySetInnerHTML={{ __html: variant }}></span>
-                    ) : (
-                      variant
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            ))}
-            </>
-          )} */}
+          {uploadFile()}
+        </div>
         </>
         ) : (fileContent && testReady === false) ? (
           <>
-            <span className="text-[30px]">Выберите кол-во вопросов</span>
+          <div className="h-50 pr-2 bg-black bg-opacity-5 transition-colors rounded-xl overflow-auto max-h-[500px]">
+            <h1 className="m-[15px] text-[25px] font-bold">Выберите кол-во вопросов</h1>
             <div className="p-[6px] text-[18px]">
               <div className="m-[4px]">
-                <input type="radio" id="10" value={10} onChange={handleRadioChange} checked={selectCount === 10} className="m-[5px]" />
+                <input type="radio" name="selectCount" id="10" value={10} onChange={handleRadioChange} checked={(selectCount === 10) && !entryCount} className="m-[5px]" />
                 <label htmlFor="10">10 вопросов</label>
               </div>
               <div className="m-[4px]">
-                <input type="radio" id="20" value={20} onChange={handleRadioChange} checked={selectCount === 20} className="m-[5px]" />
+                <input type="radio" name="selectCount" id="20" value={20} onChange={handleRadioChange} checked={(selectCount === 20) && !entryCount} className="m-[5px]" />
                 <label htmlFor="20">20 вопросов</label>
               </div>
               <div className="m-[4px]">
-                <input type="radio" id="30" value={30} onChange={handleRadioChange} checked={selectCount === 30} className="m-[5px]" />
+                <input type="radio" name="selectCount" id="30" value={30} onChange={handleRadioChange} checked={(selectCount === 30) && !entryCount} className="m-[5px]" />
                 <label htmlFor="30">30 вопросов</label>
               </div>
               <div className="m-[4px]">
-                <input type="radio" id="50" value={50} onChange={handleRadioChange} checked={selectCount === 50} className="m-[5px]" />
-                <label htmlFor="50">50 вопросов</label>
+                <input type="radio" name="selectCount" id="40" value={40} onChange={handleRadioChange} checked={(selectCount === 40) && !entryCount} className="m-[5px]" />
+                <label htmlFor="40">40 вопросов</label>
               </div>
               <div className="m-[4px]">
-                <input type="radio" id={questions.length+""} value={questions.length} onChange={handleRadioChange} checked={selectCount === questions.length} className="m-[5px]" />
+                <input type="radio" name="selectCount" id="inputCount" onChange={handleEntryCount} checked={entryCount} className="m-[5px]" />
+                <label htmlFor="inputCount">Своё кол-во: </label>
+                <input type="number" id="inputCount" ref={inputCountRef} className="m-[5px] border border-gray-300 rounded p-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-300 outline-none disabled:bg-gray-100 disabled:border-gray-400 disabled:text-gray-500 disabled:cursor-not-allowed transition-all duration-300 ease-in-out" disabled={!entryCount} />
+              </div>
+              <div className="m-[4px]">
+                <input type="radio" name="selectCount" id={questions.length+""} value={questions.length} onChange={handleRadioChange} checked={(selectCount === questions.length) && !entryCount} className="m-[5px]" />
                 <label htmlFor={questions.length+""}>Все вопросы ({questions.length})</label>
               </div>
             </div>
             <div className="m-[10px]">
-              <button onClick={startTest} className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-semibold py-2 px-6 rounded-lg shadow-lg transform transition duration-300 hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-indigo-300">Начать тест</button>
+              <button onClick={startTest} className="mb-[15px] w-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-semibold py-2 px-6 rounded-lg shadow-lg transform transition duration-300 hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-indigo-300">Начать тест</button>
+              <label htmlFor="file-input" className="mt-[15px] w-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-semibold py-2 px-6 rounded-lg shadow-lg transform transition duration-300 hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-indigo-300">Перевыбрать .docx</label>
+              {uploadFile()}
             </div>
+          </div>
           </>
         ) : (fileContent && testReady === true) ? (
-          <div className="w-full mt-4 text-gray-700 bg-gray-100 p-4 rounded-lg overflow-auto max-h-[500px]">
+          <div className="w-full mt-4 text-gray-700 bg-black bg-opacity-5 p-4 rounded-xl overflow-auto max-h-[500px]">
             <TestingProcess readyQuestions={readyQuestions} />
           </div>
         ) : (

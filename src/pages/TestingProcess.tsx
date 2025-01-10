@@ -57,6 +57,37 @@ const TestingProcess: React.FC<MassQuestions> = ({ readyQuestions }) => {
           </div>
         ))}
       </div>
+      {/* {fileContent && (
+            <>
+            <p className="mt-4 text-gray-700">
+              Выбранный файл: <span className="font-bold">{fileName}</span>
+            </p>
+            {questions.map((q) => (
+              <div key={q.id} className="w-full mt-4 text-gray-700 bg-gray-100 p-4 rounded-lg overflow-auto max-h-[500px]">
+              <strong>
+                {q.question.includes("<img")
+                ? (
+                  <span dangerouslySetInnerHTML={{ __html: q.question }}></span>
+                ) : (
+                  q.question
+                )}
+              </strong>
+              <ul>
+                {q.variants.map((variant, index) => (
+                  <li key={index}>
+                    {variant.includes("<img") 
+                    ? (
+                      <span dangerouslySetInnerHTML={{ __html: variant }}></span>
+                    ) : (
+                      variant
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            ))}
+            </>
+          )} */}
     </>
   )
 }
