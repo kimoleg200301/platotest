@@ -2,12 +2,14 @@ import React, { useState } from "react";
 import mammoth from "mammoth";
 import Header from '../compnents/Header';
 import ResultModal from "../modal/ResultModal";
+import TestingProcess from "./TestingProcess";
 
 interface Questions {
   id: number;
   question: string;
   variants: string[];
 }
+
 interface MammothImage {
     contentType: string; // MIME-тип изображения, например, "image/png"
     readAsArrayBuffer(): Promise<ArrayBuffer>; // Чтение изображения как ArrayBuffer
@@ -19,10 +21,17 @@ interface MammothImage {
 const Main: React.FC = () => {
   const [fileName, setFileName] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Questions []>([]);
+  const [readyQuestions, setReadyQuestions] = useState<Questions []>([]);
   const [fileContent, setFileContent] = useState<string>('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loadingResult, setLoadingResult] = useState<string>('');
   const [typeResult, setTypeResult] = useState<string>('');
+  const [selectCount, setSelectCount] = useState<number>(0);
+  const [testReady, setTestReady] = useState(false);
+
+  const handleRadioChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSelectCount(parseInt(event.target.value));
+  }
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setFileName('');
@@ -31,7 +40,7 @@ const Main: React.FC = () => {
     if (file) {
       setFileName(file.name);
       if (file?.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-        openModal(`Файл ${file.name} был успешно загружен`, 'success');
+        openModal(`Файл ${fileName} был успешно загружен`, 'success');
         const reader = new FileReader();
         reader.onload = async (e) => {
           const arrayBuffer = reader.result as ArrayBuffer;
@@ -64,7 +73,7 @@ const Main: React.FC = () => {
             setQuestions(questionsResult);
           }
           else {
-            openModal(`Загруженный файл не является тестом`, 'error');
+            openModal(`Загруженный файл не является тестом, либо данный тип теста не поддерживается системой`, 'error');
           }
           setFileContent(textWithImages);
           /* -------------------- */ 
@@ -77,6 +86,33 @@ const Main: React.FC = () => {
       }
     }
   };
+  /* ----- Функция подготовки вопросов с вариантами ответов ----- */
+  const startTest = () => {
+    if (questions) {
+      let selectedQuestion = [];
+      /* ----- Функция перемешивания элементов массива ----- */
+      const shuffleArray = (array: string[]) => {
+        for (let i = array.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1)); // случайный индекс от 0 до i
+          [array[i], array[j]] = [array[j], array[i]]; // меняем местами элементы
+        }
+        return array;
+      }
+      /* -------------------- */
+      for (let i = 0; i < selectCount; i++) {
+        selectedQuestion.push(questions[Math.floor(Math.random() * (questions.length + 1))])
+      }
+      const createReadyQuestions = selectedQuestion.map((el) => ({...el, variants: shuffleArray(el.variants)}));
+      setReadyQuestions(createReadyQuestions);
+      console.log(createReadyQuestions);
+      setTestReady(true);
+    }
+    else {
+      return <span>Ошибка при формировании вопросов, либо данный тип теста не поддерживается системой</span>
+    }
+  }
+  /* -------------------- */
+
   /* ----- Логика отображения модального окна ----- */
   const openModal = (mess: | string, type: | string) => {
     setTypeResult(type);
@@ -91,45 +127,83 @@ const Main: React.FC = () => {
     <>
       <Header />
       <div className="flex flex-col mt-14 items-center justify-center p-4">
-        <h1 className="m-[15px] text-[25px] font-bold">Загрузить .docx</h1>
-        <label
-          htmlFor="file-input"
-          className="cursor-pointer px-6 py-3 text-white bg-blue-500 rounded-lg hover:bg-blue-600 focus:ring focus:ring-blue-300">
-            Выбрать файл
-        </label>
-        <input id="file-input" type="file" accept=".docx" className="hidden" onChange={handleFileChange}
-        />
-        {fileContent && (
+      {(!fileContent && testReady === false) ? (
+        <>
+          <h1 className="m-[15px] text-[25px] font-bold">Загрузить .docx</h1>
+          <label
+            htmlFor="file-input"
+            className="cursor-pointer px-6 py-3 text-white bg-blue-500 rounded-lg hover:bg-blue-600 focus:ring focus:ring-blue-300">
+              Выбрать файл
+          </label>
+          <input id="file-input" type="file" accept=".docx" className="hidden" onChange={handleFileChange}
+          />
+          {/* {fileContent && (
+            <>
+            <p className="mt-4 text-gray-700">
+              Выбранный файл: <span className="font-bold">{fileName}</span>
+            </p>
+            {questions.map((q) => (
+              <div key={q.id} className="w-full mt-4 text-gray-700 bg-gray-100 p-4 rounded-lg overflow-auto max-h-[500px]">
+              <strong>
+                {q.question.includes("<img")
+                ? (
+                  <span dangerouslySetInnerHTML={{ __html: q.question }}></span>
+                ) : (
+                  q.question
+                )}
+              </strong>
+              <ul>
+                {q.variants.map((variant, index) => (
+                  <li key={index}>
+                    {variant.includes("<img") 
+                    ? (
+                      <span dangerouslySetInnerHTML={{ __html: variant }}></span>
+                    ) : (
+                      variant
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            ))}
+            </>
+          )} */}
+        </>
+        ) : (fileContent && testReady === false) ? (
           <>
-          <p className="mt-4 text-gray-700">
-            Выбранный файл: <span className="font-bold">{fileName}</span>
-          </p>
-          {questions.map((q) => (
-            <div key={q.id} className="w-full mt-4 text-gray-700 bg-gray-100 p-4 rounded-lg overflow-auto max-h-[500px]">
-            <strong>
-              {q.question.includes("<img")
-              ? (
-                <span dangerouslySetInnerHTML={{ __html: q.question }}></span>
-              ) : (
-                q.question
-              )}
-            </strong>
-            <ul>
-              {q.variants.map((variant, index) => (
-                <li key={index}>
-                  {variant.includes("<img") 
-                  ? (
-                    <span dangerouslySetInnerHTML={{ __html: variant }}></span>  
-                  ) : (
-                    variant
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-          ))}
+            <span className="text-[30px]">Выберите кол-во вопросов</span>
+            <div className="p-[6px] text-[18px]">
+              <div className="m-[4px]">
+                <input type="radio" id="10" value={10} onChange={handleRadioChange} checked={selectCount === 10} className="m-[5px]" />
+                <label htmlFor="10">10 вопросов</label>
+              </div>
+              <div className="m-[4px]">
+                <input type="radio" id="20" value={20} onChange={handleRadioChange} checked={selectCount === 20} className="m-[5px]" />
+                <label htmlFor="20">20 вопросов</label>
+              </div>
+              <div className="m-[4px]">
+                <input type="radio" id="30" value={30} onChange={handleRadioChange} checked={selectCount === 30} className="m-[5px]" />
+                <label htmlFor="30">30 вопросов</label>
+              </div>
+              <div className="m-[4px]">
+                <input type="radio" id="50" value={50} onChange={handleRadioChange} checked={selectCount === 50} className="m-[5px]" />
+                <label htmlFor="50">50 вопросов</label>
+              </div>
+              <div className="m-[4px]">
+                <input type="radio" id="50" value={questions.length} onChange={handleRadioChange} checked={selectCount === questions.length} className="m-[5px]" />
+                <label htmlFor="50">Все вопросы ({questions.length})</label>
+              </div>
+            </div>
+            <div className="m-[10px]">
+              <button onClick={startTest} className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-semibold py-2 px-6 rounded-lg shadow-lg transform transition duration-300 hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-indigo-300">Начать тест</button>
+            </div>
           </>
-        )}
+        ) : (fileContent && testReady === true) ? (
+          <TestingProcess readyQuestions={readyQuestions} />
+        ) : (
+          <span>Вернитесь на главную страницу для загрузки теста</span>
+        )
+    }
     </div>
     {isModalOpen &&
       <ResultModal isOpen={isModalOpen} type={typeResult} content={loadingResult}/>
@@ -139,8 +213,3 @@ const Main: React.FC = () => {
 }
 
 export default Main;
-
-
-
-
-
