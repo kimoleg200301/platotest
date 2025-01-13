@@ -19,7 +19,6 @@ interface MammothImage {
 }
 
 const Main: React.FC = () => {
-  const [fileName, setFileName] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Questions []>([]);
   const [readyQuestions, setReadyQuestions] = useState<Questions []>([]);
   const [fileContent, setFileContent] = useState<string>('');
@@ -40,13 +39,11 @@ const Main: React.FC = () => {
   }
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setFileName('');
     setFileContent('');
     const file = event.target.files?.[0];
     if (file) {
-      setFileName(file.name);
       if (file?.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-        openModal(`Файл ${fileName} был успешно загружен`, 'success');
+        openModal(`Файл "${file.name}" был успешно загружен`, 'success');
         const reader = new FileReader();
         reader.onload = async (e) => {
           const arrayBuffer = reader.result as ArrayBuffer;
@@ -123,7 +120,12 @@ const Main: React.FC = () => {
       for (let i = 0; i < _selectCount; i++) {
         selectedQuestion.push(questions[Math.floor(Math.random() * (questions.length + 1))])
       }
-      const createReadyQuestions = selectedQuestion.map((el) => ({...el, variants: shuffleArray(el.variants)}));
+      const createReadyQuestions = selectedQuestion.map((el) => {
+        if (!el || !el.variants) {
+          console.error("Неккоректный объект вопросов", el);
+        }
+        return {...el, variants: shuffleArray(el.variants)}
+      });
       setReadyQuestions(createReadyQuestions);
       console.log(createReadyQuestions);
       setTestReady(true);
